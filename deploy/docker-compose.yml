@@ -1,0 +1,60 @@
+services:
+  fcc:
+    image: ghcr.io/soatrix/free-claude-code:${FCC_IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8082
+      FCC_CONFIG_SCHEMA: 2
+      FCC_OPEN_BROWSER: "false"
+      PROXY_AUTH_ENABLED: "false"
+      NVIDIA_NIM_API_KEY: ${NVIDIA_NIM_API_KEY:?required}
+      MODEL: ${MODEL:-nvidia_nim/nvidia/nemotron-3-ultra-550b-a55b}
+    expose:
+      - "8082"
+    volumes:
+      - fcc-config:/root/.fcc
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8082/v1/models?view=messages"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  paperclip:
+    image: ghcr.io/paperclipai/paperclip:sha-8af38fb
+    restart: unless-stopped
+    depends_on:
+      fcc:
+        condition: service_healthy
+    pids_limit: 2048
+    stop_grace_period: 90s
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3100
+      PAPERCLIP_HOME: /paperclip
+      PAPERCLIP_DEPLOYMENT_MODE: ${PAPERCLIP_DEPLOYMENT_MODE:-authenticated}
+      PAPERCLIP_DEPLOYMENT_EXPOSURE: ${PAPERCLIP_DEPLOYMENT_EXPOSURE:-public}
+      PAPERCLIP_PUBLIC_URL: ${PAPERCLIP_PUBLIC_URL:?required}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?required}
+      PAPERCLIP_TOOL_ACTION_SIGNING_SECRET: ${PAPERCLIP_TOOL_ACTION_SIGNING_SECRET:?required}
+      ANTHROPIC_BASE_URL: http://fcc:8082
+      ANTHROPIC_API_KEY: fcc-local
+      ANTHROPIC_AUTH_TOKEN: fcc-local
+      CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST: "1"
+      CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY: "1"
+      CLAUDE_CODE_AUTO_MODE_SERVER: "0"
+      CLAUDE_CODE_DISABLE_ADVISOR_TOOL: "1"
+      CLAUDE_CODE_AUTO_COMPACT_WINDOW: "190000"
+      CLAUDE_ENABLE_STREAM_WATCHDOG: "0"
+      CLAUDE_ENABLE_BYTE_WATCHDOG: "0"
+      API_FORCE_IDLE_TIMEOUT: "0"
+      API_TIMEOUT_MS: "2147483647"
+      DISABLE_FEEDBACK_COMMAND: "1"
+      DISABLE_ERROR_REPORTING: "1"
+    volumes:
+      - paperclip-data:/paperclip
+
+volumes:
+  fcc-config:
+  paperclip-data:

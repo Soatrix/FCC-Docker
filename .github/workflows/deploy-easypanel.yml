@@ -1,0 +1,53 @@
+name: Deploy FCC to EasyPanel
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Immutable GHCR tag, e.g. sha-abc1234 or 6.19.57"
+        required: true
+        type: string
+      dry_run:
+        description: "Validate inputs without calling the deployment trigger"
+        required: false
+        type: boolean
+        default: false
+
+# Shared with build-publish.yml so builds and deploys never overlap.
+concurrency:
+  group: fcc-release-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Trigger EasyPanel deployment
+    runs-on: ubuntu-latest
+    # GitHub creates the environment on first use when it does not exist yet.
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Mask EasyPanel deployment URL
+        env:
+          EASYPANEL_DEPLOY_URL: ${{ secrets.EASYPANEL_DEPLOY_URL }}
+        run: |
+          if [[ -n "${EASYPANEL_DEPLOY_URL:-}" ]]; then
+            printf '::add-mask::%s\n' "${EASYPANEL_DEPLOY_URL}"
+          fi
+
+      - name: Deploy
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          EASYPANEL_DEPLOY_URL: ${{ secrets.EASYPANEL_DEPLOY_URL }}
+          EASYPANEL_DEPLOY_METHOD: ${{ vars.EASYPANEL_DEPLOY_METHOD || 'POST' }}
+        run: |
+          args=("${IMAGE_TAG}")
+          if [[ "${DRY_RUN:-false}" == "true" ]]; then
+            args+=(--dry-run)
+          fi
+          bash scripts/deploy.sh "${args[@]}"

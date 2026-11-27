@@ -1,0 +1,39 @@
+name: Check upstream FCC releases
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Compare config with upstream
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check upstream release
+        id: check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_NOTES_FILE: ${{ runner.temp }}/fcc-release-notes.md
+        run: bash scripts/check-upstream.sh
+
+      - name: Open update pull request
+        if: ${{ steps.check.outputs.update_needed == 'true' }}
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update FCC to ${{ steps.check.outputs.latest_version }}"
+          branch: "chore/fcc-${{ steps.check.outputs.latest_version }}"
+          title: "chore: update FCC to ${{ steps.check.outputs.latest_version }}"
+          body-path: ${{ runner.temp }}/fcc-release-notes.md
+          add-paths: config/fcc-version.json
+          delete-branch: true
