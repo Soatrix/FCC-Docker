@@ -21,6 +21,7 @@ on:
   pull_request:
     branches: [main]
   push:
+    branches: [main]
     tags:
       - "fcc-v*"
 
@@ -95,7 +96,7 @@ jobs:
           deploy=false
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             if is_true "${INPUT_DEPLOY}"; then deploy=true; fi
-          elif is_true "${DEPLOY_ON_PUBLISH}"; then
+          elif [[ "${GITHUB_EVENT_NAME}" == "push" ]] && is_true "${DEPLOY_ON_PUBLISH}"; then
             deploy=true
           fi
 
@@ -168,7 +169,7 @@ jobs:
           for script in scripts/*.sh; do bash -n "$script"; done
           env -u EASYPANEL_DEPLOY_URL bash scripts/deploy.sh sha-smoke
 
-      - name: Push multi-arch image to GHCR
+      - name: Build and publish multi-arch image to GHCR
         if: github.event_name != 'pull_request'
         id: push
         uses: docker/build-push-action@v6
@@ -185,6 +186,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Explain pull request validation
+        if: github.event_name == 'pull_request'
+        run: echo 'Docker build and smoke tests passed. GHCR publishing occurs on main pushes, release tags or manual runs.'
+
       - name: Report final image tag
         if: github.event_name != 'pull_request'
         id: final
@@ -200,7 +205,7 @@ jobs:
           printf 'image_ref=%s\n' "${IMAGE_REF}" >> "${GITHUB_OUTPUT}"
 
       - name: Mask EasyPanel deployment URL
-        if: ${{ success() && steps.config.outputs.deploy == 'true' }}
+        if: ${{ success() && github.event_name != 'pull_request' && steps.config.outputs.deploy == 'true' }}
         env:
           EASYPANEL_DEPLOY_URL: ${{ secrets.EASYPANEL_DEPLOY_URL }}
         run: |
@@ -209,7 +214,7 @@ jobs:
           fi
 
       - name: Trigger EasyPanel redeployment
-        if: ${{ success() && steps.config.outputs.deploy == 'true' }}
+        if: ${{ success() && github.event_name != 'pull_request' && steps.config.outputs.deploy == 'true' }}
         env:
           IMAGE_TAG: ${{ steps.config.outputs.image_tag }}
           EASYPANEL_DEPLOY_URL: ${{ secrets.EASYPANEL_DEPLOY_URL }}

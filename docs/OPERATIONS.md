@@ -31,14 +31,14 @@ make build FCC_VERSION=6.19.58 IMAGE=ghcr.io/soatrix/free-claude-code:6.19.58
 make smoke IMAGE=ghcr.io/soatrix/free-claude-code:6.19.58
 ```
 
-For automation, run the **Build and publish FCC** workflow or push a tag:
+Every push or merge to `main` automatically builds, smoke-tests and publishes the Docker image. Pull requests validate the build without publishing. You can also run the **Build and publish FCC** workflow manually or push a release tag:
 
 ```bash
 git tag fcc-v6.19.58
 git push origin fcc-v6.19.58
 ```
 
-Set repository variable `DEPLOY_ON_PUBLISH=true` to deploy automatically on tag pushes.
+Set repository variable `DEPLOY_ON_PUBLISH=true` to request redeployment automatically on main or release-tag pushes.
 
 ## Roll back
 
@@ -62,7 +62,7 @@ Do not roll back by repointing `latest` to an older digest. Use an immutable tag
 
 The daily **Check upstream FCC releases** workflow compares `config/fcc-version.json` with the latest release from `Alishahryar1/free-claude-code`. If different, it opens a PR containing the new version and upstream release notes. It does not auto-merge and does not publish anything.
 
-Review the PR for breaking changes, merge it, then run the **Build and publish FCC** workflow with blank `fcc_version` so it reads the updated config. Smoke tests must pass before publishing.
+Review the PR for breaking changes and merge it. The push to `main` automatically starts **Build and publish FCC**, reading the updated config. Smoke tests must pass before publishing.
 
 Manual check:
 

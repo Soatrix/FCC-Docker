@@ -55,7 +55,7 @@ GitHub Actions:
 | Type | Name | Required | Purpose |
 | --- | --- | --- | --- |
 | Secret | `EASYPANEL_DEPLOY_URL` | No | EasyPanel Compose Deployment Trigger URL; when absent, deploy steps skip cleanly |
-| Variable | `DEPLOY_ON_PUBLISH` | No | Set to `true` to request redeploy on tag pushes; set to `false` to disable |
+| Variable | `DEPLOY_ON_PUBLISH` | No | Set to `true` to request redeploy on main or release-tag pushes; set to `false` to disable |
 | Variable | `EASYPANEL_DEPLOY_METHOD` | No | Optional HTTP method override, defaults to `POST` |
 
 `GITHUB_TOKEN` is provided automatically for GHCR pushes and upstream PR creation. No NVIDIA key, proxy token, or model credential is ever written into a Dockerfile, image layer, or repository file.
@@ -94,6 +94,8 @@ make publish FCC_VERSION=6.19.58 IMAGE=ghcr.io/soatrix/free-claude-code:6.19.58
 
 Automated publish options:
 
+- Every push or merge to `main` builds and smoke-tests the image, then publishes the version, SHA and `latest` tags to GHCR.
+- Pull requests build and smoke-test locally without publishing or deploying. The merge to `main` triggers publication automatically.
 - Push a tag like `fcc-v6.19.58` to build, smoke-test, publish version/sha/latest tags, and optionally trigger a redeploy.
 - Run the **Build and publish FCC** workflow manually. Leave `fcc_version` blank to read `config/fcc-version.json`; set `publish_latest` and `deploy` as needed.
 
