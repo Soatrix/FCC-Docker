@@ -86,7 +86,7 @@ docker exec -it <paperclip-container> sh -lc 'curl -fsS http://127.0.0.1:3100/ap
 docker exec -it <paperclip-container> sh -lc 'claude -p "Reply with exactly: FCC GLOBAL OK" --model claude-sonnet-4-6 --max-turns 1'
 ```
 
-The `claude` command should print `FCC GLOBAL OK`. That proves global routing through `ANTHROPIC_BASE_URL=http://fcc:8082` works without an agent-level NVIDIA key.
+If the command prints `FCC GLOBAL OK`, a live request succeeded through the configured gateway. A successful health or model-catalog probe alone does not validate provider credentials or inference.
 
 Inspect FCC logs if needed:
 

@@ -116,6 +116,6 @@ Inside the Paperclip container, run Claude without any NVIDIA key:
 docker exec -it <paperclip-container> sh -lc 'claude -p "Reply with exactly: FCC GLOBAL OK" --model claude-sonnet-4-6 --max-turns 1'
 ```
 
-Expected output: `FCC GLOBAL OK`.
+Expected output: `FCC GLOBAL OK` if live inference succeeds. Health checks do not validate provider credentials.
 
 If this fails, verify that Paperclip can resolve `fcc` and that `http://127.0.0.1:8082` is not configured anywhere. `127.0.0.1` inside Paperclip refers to Paperclip itself, not the FCC sidecar.

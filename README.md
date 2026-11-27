@@ -94,7 +94,7 @@ make publish FCC_VERSION=6.19.58 IMAGE=ghcr.io/soatrix/free-claude-code:6.19.58
 
 Automated publish options:
 
-- Push a tag like `fcc-v6.19.58` to build, smoke-test, publish version/sha/latest tags, and optionally deploy.
+- Push a tag like `fcc-v6.19.58` to build, smoke-test, publish version/sha/latest tags, and optionally trigger a redeploy.
 - Run the **Build and publish FCC** workflow manually. Leave `fcc_version` blank to read `config/fcc-version.json`; set `publish_latest` and `deploy` as needed.
 
 ## Manual deploy and rollback
@@ -110,7 +110,7 @@ gh workflow run deploy-easypanel.yml -f image_tag=sha-abc1234 -f dry_run=false
 make rollback IMAGE_TAG=6.19.58
 ```
 
-Local deploy/rollback commands use `EASYPANEL_DEPLOY_URL` when exported; if it is absent, they log a skip and exit successfully. Full GHCR references such as `ghcr.io/soatrix/free-claude-code:sha-abc1234` are accepted and normalized to the tag portion. Set `FCC_IMAGE_TAG=<tag>` in the EasyPanel service environment before triggering a pinned deployment. The webhook requests redeployment only; it does not change the tag. See [docs/OPERATIONS.md](docs/OPERATIONS.md).
+Local deploy/rollback commands use `EASYPANEL_DEPLOY_URL` when exported; if it is absent, they log a skip and exit successfully. Full GHCR references such as `ghcr.io/soatrix/free-claude-code:sha-abc1234` are accepted and normalized to the tag portion. Set `FCC_IMAGE_TAG=<tag>` in the EasyPanel service environment before triggering a pinned deployment. For direct Git builds, deploy the desired Git revision instead. The webhook requests redeployment only; it does not change the tag. See [docs/OPERATIONS.md](docs/OPERATIONS.md).
 
 ## How Paperclip agents inherit FCC globally
 
@@ -121,7 +121,7 @@ Local deploy/rollback commands use `EASYPANEL_DEPLOY_URL` when exported; if it i
 - `CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST=1`
 - Model discovery and long-timeout settings for `claude_local`
 
-Therefore, agents using the `claude_local` adapter with command `claude` automatically route through FCC. For this host-managed mode, do not configure a competing managed AI connection or project authentication settings. The upstream `fcc-claude` launcher starts or discovers a local FCC server; use native `claude` pointed at the remote FCC gateway for separate containers. This is still FCC routing, not OpenCode.
+Agents using the `claude_local` adapter with command `claude` can route through FCC when Paperclip passes the service environment to the Claude process. For this host-managed mode, do not configure a competing managed AI connection or project authentication settings. The upstream `fcc-claude` launcher starts or discovers a local FCC server; use native `claude` pointed at the remote FCC gateway for separate containers. This is still FCC routing, not OpenCode.
 
 > **Warning:** never use `http://127.0.0.1:8082` from Paperclip. `127.0.0.1` means the Paperclip container itself, not the FCC sidecar. Use `http://fcc:8082`.
 

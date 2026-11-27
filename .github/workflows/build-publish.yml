@@ -152,7 +152,9 @@ jobs:
       - name: Smoke-test before publishing
         env:
           FCC_VERSION_EXPECTED: ${{ steps.config.outputs.version }}
-        run: bash scripts/smoke-test.sh "fcc-smoke:${{ steps.config.outputs.short_sha }}"
+        run: |
+          bash scripts/smoke-test.sh "fcc-smoke:${{ steps.config.outputs.short_sha }}"
+          FCC_SMOKE_AUTH=false bash scripts/smoke-test.sh "fcc-smoke:${{ steps.config.outputs.short_sha }}"
 
       - name: Validate Compose configuration
         env:
@@ -163,7 +165,7 @@ jobs:
         run: |
           docker compose -f deploy/docker-compose.yml config --quiet
           docker compose -f deploy/fcc-only.yml config --quiet
-          bash -n scripts/*.sh
+          for script in scripts/*.sh; do bash -n "$script"; done
           env -u EASYPANEL_DEPLOY_URL bash scripts/deploy.sh sha-smoke
 
       - name: Push multi-arch image to GHCR
