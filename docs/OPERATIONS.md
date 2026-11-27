@@ -47,8 +47,10 @@ Set repository variable `DEPLOY_ON_PUBLISH=true` to deploy automatically on tag 
 3. Trigger the deploy:
 
    ```bash
-   EASYPANEL_DEPLOY_URL=... make rollback IMAGE_TAG=sha-abc1234
+   make rollback IMAGE_TAG=sha-abc1234
    ```
+
+   Export `EASYPANEL_DEPLOY_URL` to actually call the webhook; without it, the command logs a skip and exits successfully.
 
    Or run **Deploy FCC to EasyPanel** with `image_tag=sha-abc1234`.
 

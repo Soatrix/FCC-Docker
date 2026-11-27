@@ -7,7 +7,8 @@
 # EasyPanel service environment first, then run this script.
 #
 # Usage:
-#   EASYPANEL_DEPLOY_URL=... scripts/rollback.sh sha-abc1234 [--dry-run]
+#   scripts/rollback.sh sha-abc1234 [--dry-run]
+#   EASYPANEL_DEPLOY_URL=... scripts/rollback.sh sha-abc1234
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -15,7 +16,7 @@ IMAGE_TAG="${1:-}"
 
 usage() {
   cat <<'EOF'
-Usage: EASYPANEL_DEPLOY_URL=... scripts/rollback.sh <immutable-tag> [--dry-run]
+Usage: scripts/rollback.sh <immutable-tag> [--dry-run]
 
 Examples:
   scripts/rollback.sh 6.19.57

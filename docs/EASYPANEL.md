@@ -53,7 +53,7 @@ Do **not** add a domain or route to `fcc`. FCC is internal only and is reached b
 1. Open the Compose service in EasyPanel.
 2. Go to **Settings** → **Deployment Trigger URL** (also called **Deploy Hook** or **Webhook URL**).
 3. Copy the entire URL, including any token in the path or query string.
-4. Add it as the GitHub Actions secret `EASYPANEL_DEPLOY_URL`.
+4. Optionally add it as the GitHub Actions secret `EASYPANEL_DEPLOY_URL`. Without the secret, build/publish still succeeds and the deploy step is skipped.
 
 Treat this URL as a credential. If it leaks, rotate it in EasyPanel and update the GitHub secret. The deploy scripts never print the URL or tokens.
 
@@ -81,8 +81,8 @@ docker exec -it <fcc-container> sh -lc 'ls -la /root/.fcc/logs'
 From the GitHub UI, run **Deploy FCC to EasyPanel** with an immutable tag, or locally:
 
 ```bash
-EASYPANEL_DEPLOY_URL=... make deploy IMAGE_TAG=sha-abc1234
-EASYPANEL_DEPLOY_URL=... make rollback IMAGE_TAG=6.19.57
+make deploy IMAGE_TAG=sha-abc1234
+make rollback IMAGE_TAG=6.19.57
 ```
 
 If the trigger does not override the image tag at runtime, update `FCC_IMAGE_TAG` in the EasyPanel service env first, then deploy.

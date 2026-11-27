@@ -52,7 +52,7 @@ GitHub Actions:
 
 | Type | Name | Required | Purpose |
 | --- | --- | --- | --- |
-| Secret | `EASYPANEL_DEPLOY_URL` | Yes for auto/manual deploy | EasyPanel Compose Deployment Trigger URL |
+| Secret | `EASYPANEL_DEPLOY_URL` | No | EasyPanel Compose Deployment Trigger URL; when absent, deploy steps skip cleanly |
 | Variable | `DEPLOY_ON_PUBLISH` | No | Set to `true` to deploy on tag pushes; set to `false` to disable |
 | Variable | `EASYPANEL_DEPLOY_METHOD` | No | Optional HTTP method override, defaults to `POST` |
 
@@ -69,7 +69,7 @@ GitHub Actions:
 
    `make publish` builds locally, smoke-tests it, then builds and pushes `linux/amd64` + `linux/arm64`.
 
-2. **Add the GitHub secret.** In repository settings, add secret `EASYPANEL_DEPLOY_URL` copied from the EasyPanel Compose service. Optionally add variable `DEPLOY_ON_PUBLISH=true`.
+2. **Add the GitHub secret (optional).** In repository settings, add secret `EASYPANEL_DEPLOY_URL` copied from the EasyPanel Compose service if you want automatic deployments. Without it, build/publish still succeeds and the deploy step logs a skip. Optionally add variable `DEPLOY_ON_PUBLISH=true`.
 
 3. **Configure the EasyPanel Compose service using `deploy/docker-compose.yml`.** Use repository path `/deploy` with compose file `docker-compose.yml`. Fill the env vars described in [docs/EASYPANEL.md](docs/EASYPANEL.md). Enable creation of the `.env` file so Compose substitution works.
 
@@ -108,7 +108,7 @@ gh workflow run deploy-easypanel.yml -f image_tag=sha-abc1234 -f dry_run=false
 make rollback IMAGE_TAG=6.19.57
 ```
 
-Local deploy/rollback commands need `EASYPANEL_DEPLOY_URL` exported in your shell. Full GHCR references such as `ghcr.io/soatrix/free-claude-code:sha-abc1234` are accepted and normalized to the tag portion. If your EasyPanel Compose service does not accept runtime tag overrides from the trigger payload, set `FCC_IMAGE_TAG=<tag>` in the EasyPanel service environment before triggering. See [docs/OPERATIONS.md](docs/OPERATIONS.md).
+Local deploy/rollback commands use `EASYPANEL_DEPLOY_URL` when exported; if it is absent, they log a skip and exit successfully. Full GHCR references such as `ghcr.io/soatrix/free-claude-code:sha-abc1234` are accepted and normalized to the tag portion. If your EasyPanel Compose service does not accept runtime tag overrides from the trigger payload, set `FCC_IMAGE_TAG=<tag>` in the EasyPanel service environment before triggering. See [docs/OPERATIONS.md](docs/OPERATIONS.md).
 
 ## How Paperclip agents inherit FCC globally
 

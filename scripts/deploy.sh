@@ -2,12 +2,14 @@
 # Trigger an EasyPanel Compose deployment for an FCC image tag.
 #
 # Get the URL: EasyPanel -> your Compose service -> Settings -> Deployment
-# Trigger URL (sometimes called "Deploy Hook" or "Webhook URL"). Store the full
-# URL as the GitHub secret EASYPANEL_DEPLOY_URL. It is treated as a secret and is
-# never printed. The URL and tokens are add-masked when running in Actions.
+# Trigger URL (sometimes called "Deploy Hook" or "Webhook URL"). Optionally
+# store the full URL as the GitHub secret EASYPANEL_DEPLOY_URL. It is treated as
+# a secret and is never printed. The URL and tokens are add-masked in Actions.
+# If the URL is not configured, the script logs a skip and exits successfully.
 #
 # Usage:
-#   EASYPANEL_DEPLOY_URL=... scripts/deploy.sh <image-tag> [--dry-run]
+#   scripts/deploy.sh <image-tag> [--dry-run]
+#   EASYPANEL_DEPLOY_URL=... scripts/deploy.sh <image-tag>
 set -euo pipefail
 
 IMAGE_TAG=""
@@ -17,13 +19,15 @@ RESPONSE_FILE=""
 
 usage() {
   cat <<'EOF'
-Usage: EASYPANEL_DEPLOY_URL=... scripts/deploy.sh <image-tag> [--dry-run]
+Usage: scripts/deploy.sh <image-tag> [--dry-run]
 
 Deploys the given immutable FCC image tag by calling the EasyPanel Compose
-Deployment Trigger URL. Accepts either a bare tag (sha-abc1234, 6.19.57) or a
-full GHCR reference (ghcr.io/soatrix/free-claude-code:sha-abc1234); full
-references are normalized to the tag portion. Set FCC_IMAGE_TAG in EasyPanel if
-the service does not accept runtime tag overrides.
+Deployment Trigger URL from EASYPANEL_DEPLOY_URL. If the URL is not configured,
+the deployment is skipped with a clear log message. Accepts either a bare tag
+(sha-abc1234, 6.19.57) or a full GHCR reference
+(ghcr.io/soatrix/free-claude-code:sha-abc1234); full references are normalized
+to the tag portion. Set FCC_IMAGE_TAG in EasyPanel if the service does not
+accept runtime tag overrides.
 EOF
 }
 
@@ -90,15 +94,11 @@ if [[ "${IMAGE_TAG}" != "${REQUESTED_TAG}" ]]; then
   log "Normalized image reference to tag: ${IMAGE_TAG}"
 fi
 
-if [[ -z "${EASYPANEL_DEPLOY_URL:-}" ]]; then
-  fail "EASYPANEL_DEPLOY_URL is required"
-fi
-
 if ! [[ "${METHOD}" =~ ^[A-Za-z]+$ ]]; then
   fail "invalid EASYPANEL_DEPLOY_METHOD: ${METHOD}"
 fi
 
-if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+if [[ "${GITHUB_ACTIONS:-}" == "true" && -n "${EASYPANEL_DEPLOY_URL:-}" ]]; then
   printf '::add-mask::%s\n' "${EASYPANEL_DEPLOY_URL}"
 fi
 
@@ -106,6 +106,11 @@ log "FCC image tag: ${IMAGE_TAG}"
 
 if is_true "${DRY_RUN}"; then
   log "DRY RUN: EasyPanel deployment trigger was not called"
+  exit 0
+fi
+
+if [[ -z "${EASYPANEL_DEPLOY_URL:-}" ]]; then
+  log "EASYPANEL_DEPLOY_URL is not configured; skipping EasyPanel deployment"
   exit 0
 fi
 
