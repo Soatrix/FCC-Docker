@@ -38,8 +38,13 @@ if [[ -z "${IMAGE_TAG}" ]]; then
   exit 2
 fi
 
+REQUESTED_TAG="${IMAGE_TAG}"
+if [[ "${IMAGE_TAG}" == */*:* ]]; then
+  IMAGE_TAG="${IMAGE_TAG##*:}"
+fi
+
 if ! [[ "${IMAGE_TAG}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
-  fail "invalid image tag: ${IMAGE_TAG}"
+  fail "invalid image tag: ${REQUESTED_TAG}"
 fi
 
 shift

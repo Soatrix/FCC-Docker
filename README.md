@@ -108,7 +108,7 @@ gh workflow run deploy-easypanel.yml -f image_tag=sha-abc1234 -f dry_run=false
 make rollback IMAGE_TAG=6.19.57
 ```
 
-Local deploy/rollback commands need `EASYPANEL_DEPLOY_URL` exported in your shell. If your EasyPanel Compose service does not accept runtime tag overrides from the trigger payload, set `FCC_IMAGE_TAG=<tag>` in the EasyPanel service environment before triggering. See [docs/OPERATIONS.md](docs/OPERATIONS.md).
+Local deploy/rollback commands need `EASYPANEL_DEPLOY_URL` exported in your shell. Full GHCR references such as `ghcr.io/soatrix/free-claude-code:sha-abc1234` are accepted and normalized to the tag portion. If your EasyPanel Compose service does not accept runtime tag overrides from the trigger payload, set `FCC_IMAGE_TAG=<tag>` in the EasyPanel service environment before triggering. See [docs/OPERATIONS.md](docs/OPERATIONS.md).
 
 ## How Paperclip agents inherit FCC globally
 

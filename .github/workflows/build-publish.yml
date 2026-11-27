@@ -37,6 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.config.outputs.image_tag }}
+      image_ref: ${{ steps.config.outputs.image_ref }}
       version: ${{ steps.config.outputs.version }}
       digest: ${{ steps.push.outputs.digest }}
     steps:
@@ -78,8 +79,9 @@ jobs:
           fi
 
           image_repo="ghcr.io/${owner}/free-claude-code"
-          version_tag="${image_repo}:${version}"
-          sha_tag="${image_repo}:sha-${short_sha}"
+          deploy_tag="sha-${short_sha}"
+          version_image="${image_repo}:${version}"
+          sha_image="${image_repo}:${deploy_tag}"
 
           publish_latest=false
           if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
@@ -98,13 +100,14 @@ jobs:
           {
             printf 'version=%s\n' "${version}"
             printf 'image_repo=%s\n' "${image_repo}"
-            printf 'image_tag=%s\n' "${sha_tag}"
-            printf 'version_tag=%s\n' "${version_tag}"
+            printf 'image_tag=%s\n' "${deploy_tag}"
+            printf 'image_ref=%s\n' "${sha_image}"
+            printf 'version_image=%s\n' "${version_image}"
             printf 'short_sha=%s\n' "${short_sha}"
             printf 'deploy=%s\n' "${deploy}"
             printf 'source_url=https://github.com/%s\n' "${GITHUB_REPOSITORY}"
             printf 'tags<<EOF\n'
-            printf '%s\n' "${version_tag}" "${sha_tag}"
+            printf '%s\n' "${version_image}" "${sha_image}"
             if [[ "${publish_latest}" == "true" ]]; then
               printf '%s\n' "${image_repo}:latest"
             fi
@@ -112,7 +115,8 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
 
           echo "FCC version: ${version}"
-          echo "Immutable deploy tag: ${sha_tag}"
+          echo "Immutable deploy tag: ${deploy_tag}"
+          echo "Immutable image reference: ${sha_image}"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -167,11 +171,14 @@ jobs:
         id: final
         env:
           IMAGE_TAG: ${{ steps.config.outputs.image_tag }}
+          IMAGE_REF: ${{ steps.config.outputs.image_ref }}
           DIGEST: ${{ steps.push.outputs.digest }}
         run: |
           echo "Final immutable image tag: ${IMAGE_TAG}"
+          echo "Final image reference: ${IMAGE_REF}"
           echo "Digest: ${DIGEST}"
           printf 'image_tag=%s\n' "${IMAGE_TAG}" >> "${GITHUB_OUTPUT}"
+          printf 'image_ref=%s\n' "${IMAGE_REF}" >> "${GITHUB_OUTPUT}"
 
       - name: Mask EasyPanel deployment URL
         if: ${{ success() && steps.config.outputs.deploy == 'true' }}

@@ -20,8 +20,10 @@ usage() {
 Usage: EASYPANEL_DEPLOY_URL=... scripts/deploy.sh <image-tag> [--dry-run]
 
 Deploys the given immutable FCC image tag by calling the EasyPanel Compose
-Deployment Trigger URL. Set FCC_IMAGE_TAG in EasyPanel if the service does not
-accept runtime tag overrides.
+Deployment Trigger URL. Accepts either a bare tag (sha-abc1234, 6.19.57) or a
+full GHCR reference (ghcr.io/soatrix/free-claude-code:sha-abc1234); full
+references are normalized to the tag portion. Set FCC_IMAGE_TAG in EasyPanel if
+the service does not accept runtime tag overrides.
 EOF
 }
 
@@ -75,8 +77,17 @@ if [[ -z "${IMAGE_TAG}" ]]; then
   exit 2
 fi
 
+REQUESTED_TAG="${IMAGE_TAG}"
+if [[ "${IMAGE_TAG}" == */*:* ]]; then
+  IMAGE_TAG="${IMAGE_TAG##*:}"
+fi
+
 if ! [[ "${IMAGE_TAG}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
-  fail "invalid image tag: ${IMAGE_TAG}"
+  fail "invalid image tag: ${REQUESTED_TAG}"
+fi
+
+if [[ "${IMAGE_TAG}" != "${REQUESTED_TAG}" ]]; then
+  log "Normalized image reference to tag: ${IMAGE_TAG}"
 fi
 
 if [[ -z "${EASYPANEL_DEPLOY_URL:-}" ]]; then
