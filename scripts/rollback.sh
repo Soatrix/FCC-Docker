@@ -2,9 +2,7 @@
 # Roll back Paperclip + FCC by redeploying a previously published immutable tag.
 #
 # Important: keep previous GHCR version and sha tags immutable; never delete or
-# overwrite them. If the EasyPanel Compose service does not accept runtime tag
-# overrides from the deployment trigger payload, set FCC_IMAGE_TAG=<tag> in the
-# EasyPanel service environment first, then run this script.
+# overwrite them. Set FCC_IMAGE_TAG=<tag> in the EasyPanel service environment first, then run this script.
 #
 # Usage:
 #   scripts/rollback.sh sha-abc1234 [--dry-run]
@@ -49,5 +47,5 @@ if ! [[ "${IMAGE_TAG}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
 fi
 
 shift
-printf '[rollback] Rolling back to immutable FCC image tag: %s\n' "${IMAGE_TAG}"
+printf '[rollback] Ensure EasyPanel FCC_IMAGE_TAG is set to %s before triggering redeploy\n' "${IMAGE_TAG}"
 exec bash "${SCRIPT_DIR}/deploy.sh" "${IMAGE_TAG}" "$@"

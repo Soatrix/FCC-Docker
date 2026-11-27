@@ -14,10 +14,12 @@ on:
         type: boolean
         default: true
       deploy:
-        description: "Deploy to EasyPanel after a successful publish"
+        description: "Trigger EasyPanel redeployment after a successful publish"
         required: false
         type: boolean
-        default: true
+        default: false
+  pull_request:
+    branches: [main]
   push:
     tags:
       - "fcc-v*"
@@ -125,6 +127,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -134,7 +137,7 @@ jobs:
       - name: Build local amd64 image for smoke test
         uses: docker/build-push-action@v6
         with:
-          context: ./docker/fcc
+          context: .
           file: ./docker/fcc/Dockerfile
           platforms: linux/amd64
           load: true
@@ -151,11 +154,24 @@ jobs:
           FCC_VERSION_EXPECTED: ${{ steps.config.outputs.version }}
         run: bash scripts/smoke-test.sh "fcc-smoke:${{ steps.config.outputs.short_sha }}"
 
+      - name: Validate Compose configuration
+        env:
+          NVIDIA_NIM_API_KEY: smoke-test-placeholder
+          PAPERCLIP_PUBLIC_URL: https://paperclip.example.com
+          BETTER_AUTH_SECRET: smoke-test-placeholder
+          PAPERCLIP_TOOL_ACTION_SIGNING_SECRET: smoke-test-placeholder
+        run: |
+          docker compose -f deploy/docker-compose.yml config --quiet
+          docker compose -f deploy/fcc-only.yml config --quiet
+          bash -n scripts/*.sh
+          env -u EASYPANEL_DEPLOY_URL bash scripts/deploy.sh sha-smoke
+
       - name: Push multi-arch image to GHCR
+        if: github.event_name != 'pull_request'
         id: push
         uses: docker/build-push-action@v6
         with:
-          context: ./docker/fcc
+          context: .
           file: ./docker/fcc/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
@@ -168,6 +184,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Report final image tag
+        if: github.event_name != 'pull_request'
         id: final
         env:
           IMAGE_TAG: ${{ steps.config.outputs.image_tag }}
@@ -189,7 +206,7 @@ jobs:
             printf '::add-mask::%s\n' "${EASYPANEL_DEPLOY_URL}"
           fi
 
-      - name: Deploy immutable tag to EasyPanel
+      - name: Trigger EasyPanel redeployment
         if: ${{ success() && steps.config.outputs.deploy == 'true' }}
         env:
           IMAGE_TAG: ${{ steps.config.outputs.image_tag }}

@@ -15,12 +15,15 @@ log() {
 
 fail() {
   printf '[smoke] FAIL: %s\n' "$*" >&2
+  if [[ -n "${CONTAINER}" ]]; then
+    docker logs --tail 100 "${CONTAINER}" >&2 || true
+  fi
   exit 1
 }
 
 cleanup() {
   if [[ -n "${CONTAINER}" ]]; then
-    docker rm -f "${CONTAINER}" >/dev/null 2>&1 || true
+    docker rm -fv "${CONTAINER}" >/dev/null 2>&1 || true
   fi
 }
 trap cleanup EXIT
@@ -44,9 +47,9 @@ log "Starting ${IMAGE} as ${CONTAINER} (no published ports)"
 docker run -d --name "${CONTAINER}" \
   -e HOST=0.0.0.0 \
   -e PORT=8082 \
-  -e FCC_CONFIG_SCHEMA=2 \
   -e FCC_OPEN_BROWSER=false \
-  -e PROXY_AUTH_ENABLED=false \
+  -e FCC_PROXY_TOKEN=0123456789abcdef0123456789abcdef \
+  -v /root/.fcc \
   -e NVIDIA_NIM_API_KEY=smoke-test-placeholder \
   -e MODEL="${MODEL_TO_TEST}" \
   "${IMAGE}" >/dev/null || fail "container failed to start"
@@ -57,7 +60,7 @@ for ((attempt = 0; attempt < 60; attempt++)); do
   if ! docker inspect -f '{{.State.Running}}' "${CONTAINER}" 2>/dev/null | grep -qx true; then
     break
   fi
-  if docker exec "${CONTAINER}" curl -fsS "${MODELS_URL}" >/dev/null 2>&1; then
+  if docker exec "${CONTAINER}" curl -fsS http://127.0.0.1:8082/health >/dev/null 2>&1; then
     healthy=1
     break
   fi
@@ -78,7 +81,10 @@ else
   log "FCC_VERSION_EXPECTED not set; skipping version assertion"
 fi
 
-models_json="$(docker exec "${CONTAINER}" curl -fsS "${MODELS_URL}")" \
+unauth_status="$(docker exec "${CONTAINER}" curl -s -o /dev/null -w '%{http_code}' "${MODELS_URL}")"
+case "${unauth_status}" in 401|403) ;; *) fail "unauthenticated model request returned ${unauth_status}" ;; esac
+
+models_json="$(docker exec "${CONTAINER}" curl -fsS -H 'Authorization: Bearer 0123456789abcdef0123456789abcdef' "${MODELS_URL}")" \
   || fail "models endpoint did not return a response"
 
 if ! printf '%s' "${models_json}" \

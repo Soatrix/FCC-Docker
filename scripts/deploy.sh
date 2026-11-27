@@ -21,13 +21,12 @@ usage() {
   cat <<'EOF'
 Usage: scripts/deploy.sh <image-tag> [--dry-run]
 
-Deploys the given immutable FCC image tag by calling the EasyPanel Compose
+Requests redeployment by calling the EasyPanel Compose
 Deployment Trigger URL from EASYPANEL_DEPLOY_URL. If the URL is not configured,
 the deployment is skipped with a clear log message. Accepts either a bare tag
 (sha-abc1234, 6.19.57) or a full GHCR reference
 (ghcr.io/soatrix/free-claude-code:sha-abc1234); full references are normalized
-to the tag portion. Set FCC_IMAGE_TAG in EasyPanel if the service does not
-accept runtime tag overrides.
+to the tag portion. Set FCC_IMAGE_TAG in EasyPanel before triggering a pinned deployment.
 EOF
 }
 
@@ -114,7 +113,7 @@ if [[ -z "${EASYPANEL_DEPLOY_URL:-}" ]]; then
   exit 0
 fi
 
-PAYLOAD="$(printf '{"image_tag":"%s","FCC_IMAGE_TAG":"%s"}' "${IMAGE_TAG}" "${IMAGE_TAG}")"
+log "The trigger does not select an image tag; configure FCC_IMAGE_TAG in EasyPanel first (or use latest)."
 RESPONSE_FILE="$(mktemp "${TMPDIR:-/tmp}/fcc-deploy.XXXXXX")"
 
 HTTP_CODE=""
@@ -125,8 +124,6 @@ if ! HTTP_CODE="$(curl -s \
   --retry 2 \
   --retry-delay 2 \
   -X "${METHOD}" \
-  -H 'Content-Type: application/json' \
-  --data "${PAYLOAD}" \
   "${EASYPANEL_DEPLOY_URL}" 2>/dev/null)"; then
   fail "could not contact the EasyPanel deployment endpoint"
 fi
@@ -135,4 +132,4 @@ if ! [[ "${HTTP_CODE}" =~ ^2[0-9][0-9]$ ]]; then
   fail "EasyPanel deployment trigger returned HTTP ${HTTP_CODE}"
 fi
 
-log "Deployment trigger accepted (HTTP ${HTTP_CODE})"
+log "Deployment trigger accepted (HTTP ${HTTP_CODE}); verify the deployed image in EasyPanel"

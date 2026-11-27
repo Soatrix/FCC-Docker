@@ -2,6 +2,8 @@
 
 Production-ready repository for building, publishing, smoke-testing, deploying, and rolling back **Free Claude Code (FCC)** Docker images used as an internal sidecar for Paperclip on EasyPanel.
 
+For an existing Paperclip deployment, use FCC as a separate EasyPanel App service (see [standalone setup](docs/EASYPANEL.md#standalone-fcc-app-recommended-for-existing-paperclip)). The combined Compose stack is optional.
+
 This repo deliberately keeps FCC private: it is reachable only over the Compose network as `http://fcc:8082`. Paperclip agents inherit FCC globally through service-level environment variables, so no agent needs its own NVIDIA key or provider configuration.
 
 ## Architecture
@@ -22,7 +24,7 @@ FCC defaults in this repo:
 
 | Setting | Value |
 | --- | --- |
-| FCC version | `6.19.57` (source of truth: `config/fcc-version.json`) |
+| FCC version | `6.19.58` (source of truth: `config/fcc-version.json`) |
 | Python | `3.14.10`, installed with `uv` |
 | Model | `nvidia_nim/nvidia/nemotron-3-ultra-550b-a55b` |
 | FCC port | `8082` (internal only) |
@@ -34,11 +36,11 @@ Images are published to GHCR as `ghcr.io/<owner>/free-claude-code:<tag>`. This r
 
 | Tag | Example | Mutable? | Purpose |
 | --- | --- | --- | --- |
-| Version | `ghcr.io/soatrix/free-claude-code:6.19.57` | No | Immutable release tag |
+| Version | `ghcr.io/soatrix/free-claude-code:6.19.58` | No | Immutable release tag |
 | Commit SHA | `ghcr.io/soatrix/free-claude-code:sha-abc1234` | No | Preferred immutable deployment tag |
 | `latest` | `ghcr.io/soatrix/free-claude-code:latest` | Yes | Convenience tag only; do not use for rollback |
 
-Never delete or overwrite version and sha tags. Rollback depends on them remaining immutable.
+GHCR tags are not intrinsically immutable. Use a recorded image digest for strict reproducibility; avoid republishing existing version and SHA tags.
 
 ## Secrets and variables
 
@@ -53,7 +55,7 @@ GitHub Actions:
 | Type | Name | Required | Purpose |
 | --- | --- | --- | --- |
 | Secret | `EASYPANEL_DEPLOY_URL` | No | EasyPanel Compose Deployment Trigger URL; when absent, deploy steps skip cleanly |
-| Variable | `DEPLOY_ON_PUBLISH` | No | Set to `true` to deploy on tag pushes; set to `false` to disable |
+| Variable | `DEPLOY_ON_PUBLISH` | No | Set to `true` to request redeploy on tag pushes; set to `false` to disable |
 | Variable | `EASYPANEL_DEPLOY_METHOD` | No | Optional HTTP method override, defaults to `POST` |
 
 `GITHUB_TOKEN` is provided automatically for GHCR pushes and upstream PR creation. No NVIDIA key, proxy token, or model credential is ever written into a Dockerfile, image layer, or repository file.
@@ -64,7 +66,7 @@ GitHub Actions:
 
    ```bash
    echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
-   make publish FCC_VERSION=6.19.57 IMAGE=ghcr.io/soatrix/free-claude-code:6.19.57
+   make publish FCC_VERSION=6.19.58 IMAGE=ghcr.io/soatrix/free-claude-code:6.19.58
    ```
 
    `make publish` builds locally, smoke-tests it, then builds and pushes `linux/amd64` + `linux/arm64`.
@@ -81,18 +83,18 @@ GitHub Actions:
 
 ```bash
 # Local build only
-make build FCC_VERSION=6.19.57 IMAGE=ghcr.io/soatrix/free-claude-code:6.19.57
+make build FCC_VERSION=6.19.58 IMAGE=ghcr.io/soatrix/free-claude-code:6.19.58
 
 # Local smoke test
-make smoke IMAGE=ghcr.io/soatrix/free-claude-code:6.19.57
+make smoke IMAGE=ghcr.io/soatrix/free-claude-code:6.19.58
 
 # Build, smoke-test, and publish
-make publish FCC_VERSION=6.19.57 IMAGE=ghcr.io/soatrix/free-claude-code:6.19.57
+make publish FCC_VERSION=6.19.58 IMAGE=ghcr.io/soatrix/free-claude-code:6.19.58
 ```
 
 Automated publish options:
 
-- Push a tag like `fcc-v6.19.57` to build, smoke-test, publish version/sha/latest tags, and optionally deploy.
+- Push a tag like `fcc-v6.19.58` to build, smoke-test, publish version/sha/latest tags, and optionally deploy.
 - Run the **Build and publish FCC** workflow manually. Leave `fcc_version` blank to read `config/fcc-version.json`; set `publish_latest` and `deploy` as needed.
 
 ## Manual deploy and rollback
@@ -105,22 +107,21 @@ make deploy IMAGE_TAG=sha-abc1234
 gh workflow run deploy-easypanel.yml -f image_tag=sha-abc1234 -f dry_run=false
 
 # Roll back to a previous immutable tag
-make rollback IMAGE_TAG=6.19.57
+make rollback IMAGE_TAG=6.19.58
 ```
 
-Local deploy/rollback commands use `EASYPANEL_DEPLOY_URL` when exported; if it is absent, they log a skip and exit successfully. Full GHCR references such as `ghcr.io/soatrix/free-claude-code:sha-abc1234` are accepted and normalized to the tag portion. If your EasyPanel Compose service does not accept runtime tag overrides from the trigger payload, set `FCC_IMAGE_TAG=<tag>` in the EasyPanel service environment before triggering. See [docs/OPERATIONS.md](docs/OPERATIONS.md).
+Local deploy/rollback commands use `EASYPANEL_DEPLOY_URL` when exported; if it is absent, they log a skip and exit successfully. Full GHCR references such as `ghcr.io/soatrix/free-claude-code:sha-abc1234` are accepted and normalized to the tag portion. Set `FCC_IMAGE_TAG=<tag>` in the EasyPanel service environment before triggering a pinned deployment. The webhook requests redeployment only; it does not change the tag. See [docs/OPERATIONS.md](docs/OPERATIONS.md).
 
 ## How Paperclip agents inherit FCC globally
 
 `deploy/docker-compose.yml` sets these on the `paperclip` service for every process in that container:
 
 - `ANTHROPIC_BASE_URL=http://fcc:8082`
-- `ANTHROPIC_API_KEY=fcc-local`
-- `ANTHROPIC_AUTH_TOKEN=fcc-local`
+- `ANTHROPIC_AUTH_TOKEN` (the configured `FCC_PROXY_TOKEN`, or `fcc-local` in unauthenticated mode)
 - `CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST=1`
 - Model discovery and long-timeout settings for `claude_local`
 
-Therefore, agents using the `claude_local` adapter with command `claude` automatically route through FCC. Do not configure a per-agent base URL or provider.
+Therefore, agents using the `claude_local` adapter with command `claude` automatically route through FCC. For this host-managed mode, do not configure a competing managed AI connection or project authentication settings. The upstream `fcc-claude` launcher starts or discovers a local FCC server; use native `claude` pointed at the remote FCC gateway for separate containers. This is still FCC routing, not OpenCode.
 
 > **Warning:** never use `http://127.0.0.1:8082` from Paperclip. `127.0.0.1` means the Paperclip container itself, not the FCC sidecar. Use `http://fcc:8082`.
 
