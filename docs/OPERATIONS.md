@@ -4,7 +4,7 @@
 
 `config/fcc-version.json` is the source of truth for the FCC package version. The build workflow uses:
 
-1. The tag name for `fcc-v*` pushes, e.g. `fcc-v6.19.57` → `6.19.57`.
+1. The tag name for `fcc-v*` pushes, e.g. `fcc-v6.19.58` → `6.19.58`.
 2. The manual `fcc_version` input when supplied.
 3. `config/fcc-version.json` otherwise.
 
@@ -14,28 +14,28 @@ Published tags:
 - `ghcr.io/soatrix/free-claude-code:sha-<short-sha>` — immutable commit tag; use this for deploys and rollbacks.
 - `ghcr.io/soatrix/free-claude-code:latest` — mutable convenience tag.
 
-Never delete or rewrite version or sha tags. `latest` may change at any time.
+Avoid rewriting version or SHA tags; GHCR does not enforce immutability. Record the digest for a strictly reproducible rollback. `latest` may change at any time.
 
 ## Build a specific FCC version
 
 ```bash
 make publish \
-  FCC_VERSION=6.19.57 \
-  IMAGE=ghcr.io/soatrix/free-claude-code:6.19.57
+  FCC_VERSION=6.19.58 \
+  IMAGE=ghcr.io/soatrix/free-claude-code:6.19.58
 ```
 
 This builds locally, smoke-tests the version and default model, then pushes a multi-arch image. To build without publishing:
 
 ```bash
-make build FCC_VERSION=6.19.57 IMAGE=ghcr.io/soatrix/free-claude-code:6.19.57
-make smoke IMAGE=ghcr.io/soatrix/free-claude-code:6.19.57
+make build FCC_VERSION=6.19.58 IMAGE=ghcr.io/soatrix/free-claude-code:6.19.58
+make smoke IMAGE=ghcr.io/soatrix/free-claude-code:6.19.58
 ```
 
 For automation, run the **Build and publish FCC** workflow or push a tag:
 
 ```bash
-git tag fcc-v6.19.57
-git push origin fcc-v6.19.57
+git tag fcc-v6.19.58
+git push origin fcc-v6.19.58
 ```
 
 Set repository variable `DEPLOY_ON_PUBLISH=true` to deploy automatically on tag pushes.
@@ -43,7 +43,7 @@ Set repository variable `DEPLOY_ON_PUBLISH=true` to deploy automatically on tag 
 ## Roll back
 
 1. Pick an existing immutable version or sha tag from GHCR.
-2. If the EasyPanel Compose service does not accept runtime tag overrides, set `FCC_IMAGE_TAG=<tag>` in the service environment first.
+2. Set `FCC_IMAGE_TAG=<tag>` in the service environment first; the webhook does not change it.
 3. Trigger the deploy:
 
    ```bash
@@ -89,7 +89,7 @@ docker ps --format '{{.Names}}\t{{.Image}}'
 If FCC is unhealthy, check that `/root/.fcc` is writable in the `fcc-config` volume and that the health endpoint responds inside the container:
 
 ```bash
-docker exec -it <fcc-container> sh -lc 'curl -fsS http://127.0.0.1:8082/v1/models?view=messages'
+docker exec -it <fcc-container> sh -lc 'curl -fsS http://127.0.0.1:8082/health'
 ```
 
 ## NVIDIA NIM auth or model errors
@@ -105,7 +105,7 @@ docker exec -it <fcc-container> sh -lc 'curl -fsS http://127.0.0.1:8082/v1/model
 Symptoms include Paperclip reporting a conflicting provider, agent-level API keys, or Claude ignoring the global base URL. Fix by:
 
 - Keeping `CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST=1` and `ANTHROPIC_BASE_URL=http://fcc:8082` on the `paperclip` service.
-- Removing `ANTHROPIC_BASE_URL`, `ANTHROPIC_API_KEY`, `NVIDIA_NIM_API_KEY`, and custom provider settings from individual agents.
+- Removing competing authentication settings from individual agents and project `.claude/settings.json` (including `apiKeyHelper`), and using either host-managed routing or a compatible Paperclip managed connection, not both.
 - Restarting Paperclip so all `claude` processes inherit the service-level environment.
 
 ## Confirm global routing
@@ -116,6 +116,6 @@ Inside the Paperclip container, run Claude without any NVIDIA key:
 docker exec -it <paperclip-container> sh -lc 'claude -p "Reply with exactly: FCC GLOBAL OK" --model claude-sonnet-4-6 --max-turns 1'
 ```
 
-Expected output: `FCC GLOBAL OK`.
+Expected output: `FCC GLOBAL OK` if live inference succeeds. Health checks do not validate provider credentials.
 
 If this fails, verify that Paperclip can resolve `fcc` and that `http://127.0.0.1:8082` is not configured anywhere. `127.0.0.1` inside Paperclip refers to Paperclip itself, not the FCC sidecar.

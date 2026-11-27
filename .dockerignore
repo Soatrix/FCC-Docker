@@ -1,0 +1,8 @@
+# Allow only the files needed by the image build (no local credentials).
+**
+!config/
+!config/fcc-version.json
+!docker/
+!docker/fcc/
+!docker/fcc/Dockerfile
+!docker/fcc/entrypoint.py

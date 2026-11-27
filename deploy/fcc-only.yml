@@ -1,0 +1,21 @@
+# For a standalone FCC service built directly from Git.
+services:
+  fcc:
+    build:
+      context: ..
+      dockerfile: docker/fcc/Dockerfile
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8082
+      FCC_OPEN_BROWSER: "false"
+      FCC_PROXY_TOKEN: ${FCC_PROXY_TOKEN:-}
+      NVIDIA_NIM_API_KEY: ${NVIDIA_NIM_API_KEY:?required}
+      MODEL: ${MODEL:-nvidia_nim/nvidia/nemotron-3-ultra-550b-a55b}
+    expose:
+      - "8082"
+    volumes:
+      - fcc-config:/root/.fcc
+
+volumes:
+  fcc-config:

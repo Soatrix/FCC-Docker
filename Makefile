@@ -4,12 +4,12 @@
 #   make publish FCC_VERSION=6.19.57 IMAGE=ghcr.io/soatrix/free-claude-code:6.19.57
 
 IMAGE_ORG ?= soatrix
-FCC_VERSION ?= 6.19.57
+FCC_VERSION ?= $(shell python3 -c 'import json; print(json.load(open("config/fcc-version.json"))["version"])')
 IMAGE ?= ghcr.io/$(IMAGE_ORG)/free-claude-code:$(FCC_VERSION)
 IMAGE_TAG ?= $(FCC_VERSION)
 FCC_VERSION_EXPECTED ?= $(FCC_VERSION)
 DOCKERFILE ?= docker/fcc/Dockerfile
-BUILD_CONTEXT ?= docker/fcc
+BUILD_CONTEXT ?= .
 VCS_REF ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 
 .DEFAULT_GOAL := help
